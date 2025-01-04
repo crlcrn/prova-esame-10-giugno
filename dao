@@ -1,0 +1,89 @@
+from database.DB_connect import DBConnect
+from model.Attore import Attore
+
+
+class DAO():
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def get_generi():
+            cnx = DBConnect.get_connection()
+            result = []
+            if cnx is None:
+                print("Connessione fallita")
+            else:
+                cursor = cnx.cursor(dictionary=True)
+                query = """ select distinct genre 
+                            from movies_genres mg 
+                            order by genre asc 
+                        """
+                cursor.execute(query,)
+
+                for row in cursor:
+                    result.append(row['genre'])
+                cursor.close()
+                cnx.close()
+            return result
+
+    @staticmethod
+    def get_attori(genere):
+        cnx = DBConnect.get_connection()
+        result = []
+        if cnx is None:
+            print("Connessione fallita")
+        else:
+            cursor = cnx.cursor(dictionary=True)
+            query = """
+                SELECT DISTINCT a.*
+                FROM actors a, roles r, movies m, movies_genres mg
+                WHERE a.id = r.actor_id
+                  AND r.movie_id = m.id
+                  AND m.id = mg.movie_id
+                  AND mg.genre = %s
+                  ORDER BY a.last_name ASC
+            """
+            cursor.execute(query, (genere,))
+            for row in cursor:
+                result.append(Attore(**row))
+            cursor.close()
+            cnx.close()
+        return result
+
+    @staticmethod
+    def get_attori_per_genere(genere):
+        conn = DBConnect.get_connection()
+        result = []
+        query = """ SELECT DISTINCT a.id, a.first_name, a.last_name, a.gender
+                    FROM actors a, roles r, movies m, movies_genres mg 
+                    WHERE a.id = r.actor_id AND r.movie_id = m.id
+                    AND m.id = mg.movie_id 
+                    AND mg.genre = %s """
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(query, (genere,))
+        for row in cursor:
+            result.append(Attore(**row))
+        cursor.close()
+        conn.close()
+        return result
+
+    @staticmethod
+    def get_coppie_attori_con_peso(genere):
+        conn = DBConnect.get_connection()
+
+        result = []
+        query = """ SELECT r1.actor_id AS attore1, r2.actor_id AS attore2, COUNT(*) AS peso 
+                    FROM roles r1, roles r2, movies m, movies_genres mg 
+                    WHERE r1.actor_id < r2.actor_id AND r1.movie_id = r2.movie_id 
+                    AND r1.movie_id = m.id AND m.id = mg.movie_id 
+                    AND mg.genre = %s 
+                    GROUP BY r1.actor_id, r2.actor_id """
+
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(query, (genere,))
+        for row in cursor:
+            result.append((row['attore1'], row['attore2'], row['peso']))
+        cursor.close()
+        conn.close()
+        return result
+
