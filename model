@@ -1,0 +1,41 @@
+import networkx as nx
+
+from database.DAO import DAO
+
+
+class Model:
+    def __init__(self):
+        self._grafo = nx.Graph()
+
+    def get_genre(self):
+        return DAO.get_generi()
+
+    def get_actors(self, genere):
+        return DAO.get_attori(genere)
+
+    def create_graph(self, genere):
+
+        attori = DAO.get_attori_per_genere(genere)
+        for attore in attori:
+            self._grafo.add_node(attore.id, data = attore)
+
+        archi = DAO.get_coppie_attori_con_peso(genere)
+        for arco in archi:
+            attore1, attore2, peso = arco
+            self._grafo.add_edge(attore1, attore2, weight=peso)
+        return self._grafo
+
+
+    def get_connected_actors(self, attore_id):
+        # Controlla se l'attore esiste nel grafo
+        if attore_id not in self._grafo:
+            return []
+
+        # Trova i nodi connessi
+        connected_nodes = nx.node_connected_component(self._grafo, attore_id)
+
+        # Recupera gli oggetti Attore dai nodi
+        connected_actors = [self._grafo.nodes[attore_id]['data'] for attore_id in connected_nodes]
+
+        # Ordina gli attori per cognome
+        return sorted(connected_actors, key=lambda attore: attore.last_name)
